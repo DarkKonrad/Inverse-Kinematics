@@ -9,15 +9,24 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows;
 using System.Numerics;
+using System.Xml.Serialization;
+using System.IO;
+using System.Xml;
+using System.Runtime.Serialization;
+using System.Diagnostics;
+
 namespace Kreski_pod_3
 {
     public partial class Form1 : Form
     {
         Graphics pg;
         Segment end;
-        Segment start;
+        Segment start,next,current;
         Vector2 anchor;
-       
+        bool loading=false;
+        DataContractSerializer serial;
+        DataContractSerializerSettings settings = new DataContractSerializerSettings();
+
         int vbef = 0;
         List<TrackBar> TrList = new List<TrackBar>();
         List<Segment> Lsegment = new List<Segment>();
@@ -33,47 +42,52 @@ namespace Kreski_pod_3
 
         private void InitalizeArm()
         {
+            Lsegment.Clear();
+            Lsegment.TrimExcess();
+          
+          
             start = new Segment(300, 200, 100);
-            Segment current = start;
+             current = start;
            
             Lsegment.Add(start);
             for (int i = 0; i < Num1.Value; i++)
             {
-                Segment next = new Segment(current, 100);
+                 next = new Segment(current, 100);
                 Lsegment.Add(next);
                 current.Child = next;
                 current = next;
+
 // ************************************************************************************************************************
-                TrList.Add(new TrackBar());
-              
-                TrList[i].Location = new System.Drawing.Point(trackBar2.Location.X, trackBar2.Location.Y + 100*i);
-                TrList[i].Size = trackBar2.Size;
-                TrList[i].Parent = this.ParentForm;
-                TrList[i].Visible = true;
-           //   TrList[i].ValueChanged += TrackBar_ValueChanged;//new System.EventHandler(TrackBar_ValueChanged);
-                TrList[i].Tag = i;
-                TrList[i].Maximum = trackBar2.Maximum;
-                this.Controls.Add(TrList[i]);
+           //     TrList.Add(new TrackBar());             
+           //     TrList[i].Location = new System.Drawing.Point(trackBar2.Location.X, trackBar2.Location.Y + 100*i);
+           //     TrList[i].Size = trackBar2.Size;
+           //     TrList[i].Parent = this.ParentForm;
+           //     TrList[i].Visible = true;
+           //     TrList[i].ValueChanged += TrackBar_ValueChanged;//new System.EventHandler(TrackBar_ValueChanged);
+           //     TrList[i].Tag = i;
+           //     TrList[i].Maximum = trackBar2.Maximum;
+           //     this.Controls.Add(TrList[i]);
+
     // *******************************************************************************************************************
             }
             end = current;
             anchor = new Vector2(this.panel2.ClientRectangle.Width / 3, this.panel2.ClientRectangle.Height / 3);
-
+            Lsegment.TrimExcess();
         }
-
+     
         private void TrackBar_ValueChanged(object sender, EventArgs e)
         {
-            //TO DO: kod obsługujący ręczną obsługę suwaka  
+        //    //TO DO: kod obsługujący ręczną obsługę suwaka  
 
-            var trackBar = (TrackBar)sender;
-           // if (trackBar.Value > vbef)
-        //    {
-                Lsegment[(int)trackBar.Tag].Angle += (float)(Math.PI / 180);
-            Lsegment[(int)trackBar.Tag].calculateB();
+        //    var trackBar = (TrackBar)sender;
+        //   // if (trackBar.Value > vbef)
+        ////    {
+        //        Lsegment[(int)trackBar.Tag].Angle += (float)(Math.PI / 180);
+        //    Lsegment[(int)trackBar.Tag].calculateB();
            
-            //   end.angle += (float)(Math.PI / 180); // dodawanie 1 stopnia
-            panel2.Invalidate();
-                panel2.Update();
+        //    //   end.angle += (float)(Math.PI / 180); // dodawanie 1 stopnia
+        //    panel2.Invalidate();
+        //        panel2.Update();
        //     }
      
         }
@@ -126,7 +140,7 @@ namespace Kreski_pod_3
 
                 }
                 
-                setTrackBars(); //*
+               /* setTrackBars();*/ //*
                 
             }   
 
@@ -163,9 +177,13 @@ namespace Kreski_pod_3
 
         private void numericUpDown1_ValueChanged(object sender, EventArgs e)
         {
-           
-            InitalizeArm();
-            panel2.Invalidate();
+            if (loading == false)
+            {
+                Lsegment.Clear();
+                InitalizeArm();
+                panel2.Invalidate();
+            }
+            else loading = false;
         }
 
    
@@ -173,8 +191,90 @@ namespace Kreski_pod_3
         {
             end.follow((float)e.X, (float)e.Y); // podążanie za myszką 
             panel2.Invalidate();
-            trackBar2.Value = (int)(end.Angle * (180 / Math.PI));
+           // trackBar2.Value = (int)(end.Angle * (180 / Math.PI)); //*
             setTrackBars();
         }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+           
+            settings.PreserveObjectReferences = true;
+
+            if (File.Exists("InvKinematics.xml"))
+            {
+                File.Delete("InvKinematics.xml");
+            }
+
+            FileStream writer = new FileStream("InvKinematics.xml",FileMode.Create,FileAccess.Write);
+            Lsegment.TrimExcess();
+            serial = new DataContractSerializer(typeof(List<Segment>), settings);
+            serial.WriteObject(writer, this.Lsegment);
+
+            writer.Close();
+            writer.Dispose();
+           
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+         
+            settings.PreserveObjectReferences = true;
+
+            FileStream Reader = new FileStream("InvKinematics.xml", FileMode.Open, FileAccess.Read);
+           
+           serial = new DataContractSerializer(typeof(List<Segment>), settings);
+
+            List<Segment> temp = (List<Segment>)serial.ReadObject(Reader);
+
+            Reader.Dispose();
+
+            LoadFromXml(ref temp);
+          
+            panel2.Invalidate();
+           
+            Reader.Close();
+            Reader.Dispose();
+        }
+
+        private void LoadFromXml(ref List<Segment> list)
+        {
+
+            try
+            {
+                 Lsegment = new List<Segment>();
+              
+                start = list[0];
+                current = start;
+                 Lsegment.Add(start);
+             
+                for (int i = 1; i < list.Count; i++) // uwaga na count 
+                {
+                    Debug.WriteLine("temp: " + list.Count);
+                    Debug.WriteLine("lSegment: " + Lsegment.Count);
+                    next = list[i];
+                    Lsegment.Add(next);
+                    current.Child = next;
+                    current = next;
+                }
+               
+                end = current;
+          
+                loading = true;
+
+                Num1.Value = Lsegment.Count-1;
+
+            }
+           catch(Exception ex)
+            {
+                MessageBox.Show("Exception: " + ex.ToString());
+            }
+        }
+
     }
 }

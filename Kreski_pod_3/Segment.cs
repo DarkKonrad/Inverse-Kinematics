@@ -10,24 +10,36 @@ using System.Windows.Forms;
 using System.Windows;
 using System.Collections;
 using System.Numerics;
-
+using System.IO;
+using System.Xml;
+using System.Xml.Serialization;
+using System.Runtime.Serialization;
 namespace Kreski_pod_3
 {
-   public class Segment
+    [DataContractAttribute()]
+    public class Segment
     {
+        [DataMember()]
         Vector2 a;                  // a określa początek segmentu, b jego koniec --> prosta AB 
+        [DataMember()]
         private float angle = 0;     // Kąt pod którym jest wyrysowywany segment
+        [DataMember()]
         float len;                  // długość segmentu 
-        public Vector2 b = new Vector2(); 
+        [DataMember()]
+        private Vector2 b = new Vector2();
+        [DataMember()]
         Segment parent = null;      // Poprzedni segment 
+        [DataMember()]
         Segment child = null;       // kolejny segment
-        
 
-                    /* GETery oraz SETery */
-        public Segment Child { get => child; set => child = value; }
+
+        /* GETery oraz SETery */
+       
+        public Segment Child { get => child; set => child = value; }      
         public Segment Parent { get => parent; set => parent = value; }
         public Vector2 A { get => a; set => a = value; }
         public float Angle { get => angle; set => angle = value; }
+        public Vector2 B { get => b; set => b = value; }
 
 
         /* Konstruktory */
@@ -46,6 +58,8 @@ namespace Kreski_pod_3
             len = len_;
             calculateB();
         }
+      Segment() { a = new Vector2(); b = new Vector2(); child = null; parent = null;angle = 0;len = 0; }
+
 
                 /* Metody*/
 
@@ -54,7 +68,7 @@ namespace Kreski_pod_3
             Vector2 target = new Vector2(tx, ty);
             Vector2 dir = Vector2.Subtract(target, A);
             Angle = (float)Math.Atan2(dir.Y, dir.X);
-            checkAngle();                       // *
+          /*  checkAngle();*/                       // *
             dir = setMag(len, dir);
           
             dir = Vector2.Multiply(-1, dir);
