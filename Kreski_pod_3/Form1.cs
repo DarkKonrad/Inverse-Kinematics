@@ -14,6 +14,7 @@ using System.IO;
 using System.Xml;
 using System.Runtime.Serialization;
 using System.Diagnostics;
+using System.Windows.Media;
 
 namespace Kreski_pod_3
 {
@@ -32,12 +33,15 @@ namespace Kreski_pod_3
         List<Segment> Lsegment = new List<Segment>();
         public Form1()
         {
-            
+
+
             InitializeComponent();
+            pg = panel2.CreateGraphics();
             InitalizeArm();
             Num1.Value = 3;
-            Num1.Minimum = 2;
+            Num1.Minimum = 0;
             Num1.Maximum = 6;
+       
         }
 
         private void InitalizeArm()
@@ -46,13 +50,13 @@ namespace Kreski_pod_3
             Lsegment.TrimExcess();
           
           
-            start = new Segment(300, 200, 100);
+            start = new Segment(300, 200, 100,pg);
              current = start;
            
             Lsegment.Add(start);
             for (int i = 0; i < Num1.Value; i++)
             {
-                 next = new Segment(current, 100);
+                 next = new Segment(current, 100,pg);
                 Lsegment.Add(next);
                 current.Child = next;
                 current = next;
@@ -73,6 +77,7 @@ namespace Kreski_pod_3
             end = current;
             anchor = new Vector2(this.panel2.ClientRectangle.Width / 3, this.panel2.ClientRectangle.Height / 3);
             Lsegment.TrimExcess();
+           
         }
      
         private void TrackBar_ValueChanged(object sender, EventArgs e)
@@ -103,29 +108,30 @@ namespace Kreski_pod_3
 
         private void panel1_Paint(object sender, PaintEventArgs e)
         {
-            pg = e.Graphics;
+         
             base.OnPaint(e);
-
-            end.calculateB();
+         
+            end.calculateB(pg);
             try
             {
                 Segment next = end.Parent;
 
                 while (next != null)
                 {
+ 
                     next.follow();
-                    next.calculateB();
+                    next.calculateB(pg);
                     next = next.Parent;
                 }
 
                 start.A = new Vector2(anchor.X, anchor.Y);
-                start.calculateB();
+                start.calculateB(pg);
                 next = start.Child;
 
                 while (next != null)
                 {
                     next.attachA();
-                    next.calculateB();
+                    next.calculateB(pg);
                     next = next.Child;
                 }
 
@@ -139,14 +145,22 @@ namespace Kreski_pod_3
                     next = next.Parent;
 
                 }
+               
+                float an = end.Angle;
+                an = (float)(an * 180 / Math.PI);
+                label1.Text = an.ToString();
+    
                 
-               /* setTrackBars();*/ //*
                 
+                /* setTrackBars();*/ //*
+               
+
             }   
 
-
+           
          
             catch { }
+
         }
 
    
@@ -155,17 +169,19 @@ namespace Kreski_pod_3
 
         private void trackBar2_Scroll(object sender, EventArgs e)
         {
-            if (trackBar2.Value > vbef)
+            if (trackBar2.Value > vbef) // trackbar moę to jest to
             {
 
-                end.Angle += (float)(Math.PI / 180); // dodawanie 1 stopnia w radianach
+              //  end.Angle += 0.1F* (float)(180F/Math.PI ); // dodawanie 1 stopnia w radianach
+                end.Angle += (float)(Math.PI * 1 / 180);
                 panel2.Invalidate();
                 panel2.Update();
             }
             else if (trackBar2.Value < vbef)
             {
 
-                end.Angle -= (float)(Math.PI / 180);
+                // end.Angle -=0.1F* (float)(180F /Math.PI);
+                end.Angle -= (float)(Math.PI * 1 / 180);
                 panel2.Invalidate();
                 panel2.Update();
 
@@ -189,7 +205,9 @@ namespace Kreski_pod_3
    
         private void panel1_MouseMove(object sender, MouseEventArgs e)
         {
+       //     pg.TranslateTransform(e.X, e.Y);
             end.follow((float)e.X, (float)e.Y); // podążanie za myszką 
+       //     pg.TranslateTransform(-e.X, -e.Y);
             panel2.Invalidate();
            // trackBar2.Value = (int)(end.Angle * (180 / Math.PI)); //*
             setTrackBars();
@@ -205,7 +223,7 @@ namespace Kreski_pod_3
         {
            
             settings.PreserveObjectReferences = true;
-
+            
             if (File.Exists("InvKinematics.xml"))
             {
                 File.Delete("InvKinematics.xml");
@@ -221,11 +239,17 @@ namespace Kreski_pod_3
            
         }
 
+        private void label1_Click(object sender, EventArgs e)
+        {
+         
+            
+        }
+
         private void button2_Click(object sender, EventArgs e)
         {
          
             settings.PreserveObjectReferences = true;
-
+            
             FileStream Reader = new FileStream("InvKinematics.xml", FileMode.Open, FileAccess.Read);
            
            serial = new DataContractSerializer(typeof(List<Segment>), settings);
